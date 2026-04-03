@@ -1,0 +1,7 @@
+1) Voir pourquoi l'accuracy est basse 
+2) comment gerer que une seul partie de la video correspond vraiment 
+3) Dans la vide onous donner un intervalle 
+4) Pas classer les frames mais la video en prenant en compte toutes les frames en identifiant quel classe est la plus présente dasn la video 
+5) Peut etre mettre un label pas d'anomalie 
+6) Donner une image et nous renvoyer un texte 
+7) Verifier / tester avec les annotation le score de similarité 
