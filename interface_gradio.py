@@ -15,7 +15,8 @@ import gradio as gr
 import logging
 import mobileclip
 import clip
-from transformers import CLIPModel, CLIPProcessor
+import open_clip
+from transformers import CLIPModel, CLIPProcessor, AutoModel, AutoProcessor
 
 
 # Affiche des logs pour suivre l'avancement du script et détecter d'éventuels problèmes
@@ -43,6 +44,34 @@ MODELES_DISPO = {
     "TinyCLIP": {
         "dossier": RESULTS_DIR / "tinyclip",
         "type"   : "tinyclip"
+    },
+    "SigLIP": {
+        "dossier"         : RESULTS_DIR / "siglip",
+        "type"            : "siglip"
+    },
+    "EVA-CLIP": {
+        "dossier"         : RESULTS_DIR / "evaclip",
+        "type"            : "openclip",
+        "model_name"      : "EVA02-B-16",
+        "model_pretrained": "merged2b_s8b_b131k"
+    },
+    "OpenCLIP": {
+        "dossier"         : RESULTS_DIR / "openclip",
+        "type"            : "openclip",
+        "model_name"      : "ViT-B-32",
+        "model_pretrained": "laion2b_s34b_b79k"
+    },
+    "MetaCLIP": {
+        "dossier"         : RESULTS_DIR / "metaclip",
+        "type"            : "openclip",
+        "model_name"      : "ViT-B-32-quickgelu",
+        "model_pretrained": "metaclip_400m"
+    },
+    "DFN-CLIP": {
+        "dossier"         : RESULTS_DIR / "dfnclip",
+        "type"            : "openclip",
+        "model_name"      : "ViT-B-16",
+        "model_pretrained": "dfn2b"
     }
 }
 
@@ -75,6 +104,26 @@ def charger_encodeur_texte(nom_modele):
         model, _ = clip.load("ViT-B/32", device=device)
         model.eval()
         cache_modeles[nom_modele] = ("clip", model, None, device)
+
+    elif type_m == "siglip":
+        # SigLIP utilise AutoProcessor et AutoModel de HuggingFace
+        model_hf  = "google/siglip-base-patch16-224"
+        processor = AutoProcessor.from_pretrained(model_hf)
+        model     = AutoModel.from_pretrained(model_hf).to(device)
+        model.eval()
+        cache_modeles[nom_modele] = ("siglip", model, processor, device)
+
+    elif type_m == "openclip":
+        # EVA-CLIP, OpenCLIP, MetaCLIP et DFN-CLIP partagent tous la même API open_clip
+        # On récupère model_name et model_pretrained depuis la config du modèle
+        config    = MODELES_DISPO[nom_modele]
+        model, _, _ = open_clip.create_model_and_transforms(
+            config["model_name"], pretrained=config["model_pretrained"]
+        )
+        model     = model.to(device)
+        model.eval()
+        tokenizer = open_clip.get_tokenizer(config["model_name"])
+        cache_modeles[nom_modele] = ("openclip", model, tokenizer, device)
 
     else:
         model_hf   = "wkcn/TinyCLIP-ViT-39M-16-Text-19M-YFCC15M"
@@ -122,6 +171,17 @@ def encoder_requete(texte, encodeur):
         elif type_m == "clip":
             import clip
             tokens    = clip.tokenize([texte]).to(device)
+            embedding = model.encode_text(tokens)
+
+        elif type_m == "siglip":
+            # SigLIP a des contraintes de longueur différentes, on fixe max_length à 64
+            inputs    = extra(text=[texte], return_tensors="pt", padding="max_length",
+                              max_length=64, truncation=True).to(device)
+            embedding = model.get_text_features(**inputs)
+
+        elif type_m == "openclip":
+            # EVA-CLIP, OpenCLIP, MetaCLIP et DFN-CLIP utilisent tous encode_text via open_clip
+            tokens    = extra([texte]).to(device)
             embedding = model.encode_text(tokens)
 
         else:

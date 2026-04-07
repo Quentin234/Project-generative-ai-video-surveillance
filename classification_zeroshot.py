@@ -23,7 +23,8 @@ from pathlib import Path
 import logging
 import mobileclip
 import clip
-from transformers import CLIPModel, CLIPProcessor
+import open_clip
+from transformers import CLIPModel, CLIPProcessor, AutoModel, AutoProcessor
 
 # Affiche des logs pour suivre l'avancement du script et détecter d'éventuels problèmes
 logging.basicConfig(
@@ -88,6 +89,44 @@ MODELES = [
         "dossier": RESULTS_DIR / "tinyclip",
         "prefixe": "tinyclip",
         "type"   : "tinyclip"
+    },
+    {
+        "nom"    : "SigLIP",
+        "dossier": RESULTS_DIR / "siglip",
+        "prefixe": "siglip",
+        "type"   : "siglip"
+    },
+    {
+        "nom"             : "EVA-CLIP",
+        "dossier"         : RESULTS_DIR / "evaclip",
+        "prefixe"         : "evaclip",
+        "type"            : "openclip",
+        "model_name"      : "EVA02-B-16",
+        "model_pretrained": "merged2b_s8b_b131k"
+    },
+    {
+        "nom"             : "OpenCLIP",
+        "dossier"         : RESULTS_DIR / "openclip",
+        "prefixe"         : "openclip",
+        "type"            : "openclip",
+        "model_name"      : "ViT-B-32",
+        "model_pretrained": "laion2b_s34b_b79k"
+    },
+    {
+        "nom"             : "MetaCLIP",
+        "dossier"         : RESULTS_DIR / "metaclip",
+        "prefixe"         : "metaclip",
+        "type"            : "openclip",
+        "model_name"      : "ViT-B-32-quickgelu",
+        "model_pretrained": "metaclip_400m"
+    },
+    {
+        "nom"             : "DFN-CLIP",
+        "dossier"         : RESULTS_DIR / "dfnclip",
+        "prefixe"         : "dfnclip",
+        "type"            : "openclip",
+        "model_name"      : "ViT-B-16",
+        "model_pretrained": "dfn2b"
     }
 ]
 
@@ -141,6 +180,44 @@ def encoder_labels_tinyclip(labels, device):
 
     return text_embeddings.cpu().float().numpy()
 
+# Encode les labels texte avec SigLIP.
+# SigLIP utilise AutoProcessor et AutoModel de HuggingFace avec max_length fixé
+# car son tokeniseur a des contraintes de longueur différentes de CLIP
+def encoder_labels_siglip(labels, device):
+
+    model_name = "google/siglip-base-patch16-224"
+    processor  = AutoProcessor.from_pretrained(model_name)
+    model      = AutoModel.from_pretrained(model_name).to(device)
+    model.eval()
+
+    inputs = processor(text=labels, return_tensors="pt", padding="max_length",
+                       max_length=64, truncation=True).to(device)
+
+    with torch.no_grad():
+        text_embeddings = model.get_text_features(**inputs)
+        text_embeddings = text_embeddings / text_embeddings.norm(dim=-1, keepdim=True)
+
+    return text_embeddings.cpu().float().numpy()
+
+# Encode les labels texte avec n'importe quel modèle open_clip (EVA-CLIP, OpenCLIP, MetaCLIP, DFN-CLIP).
+# Tous partagent la même API open_clip, seuls model_name et model_pretrained changent selon le modèle.
+def encoder_labels_openclip(labels, model_name, model_pretrained, device):
+
+    model, _, _ = open_clip.create_model_and_transforms(
+        model_name, pretrained=model_pretrained
+    )
+    model = model.to(device)
+    model.eval()
+
+    tokenizer = open_clip.get_tokenizer(model_name)
+    tokens    = tokenizer(labels).to(device)
+
+    with torch.no_grad():
+        text_embeddings = model.encode_text(tokens)
+        text_embeddings = text_embeddings / text_embeddings.norm(dim=-1, keepdim=True)
+
+    return text_embeddings.cpu().float().numpy()
+
 # Effectue la classification zero-shot pour un modèle donné
 def classifier_modele(config):
 
@@ -169,6 +246,12 @@ def classifier_modele(config):
         text_embeddings = encoder_labels_mobileclip(LABELS, checkpoint, device)
     elif type_m == "clip":
         text_embeddings = encoder_labels_clip(LABELS, device)
+    elif type_m == "siglip":
+        text_embeddings = encoder_labels_siglip(LABELS, device)
+    elif type_m == "openclip":
+        text_embeddings = encoder_labels_openclip(
+            LABELS, config["model_name"], config["model_pretrained"], device
+        )
     else:
         text_embeddings = encoder_labels_tinyclip(LABELS, device)
 

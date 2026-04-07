@@ -49,6 +49,31 @@ MODELES = [
         "nom"    : "TinyCLIP",
         "dossier": RESULTS_DIR / "tinyclip",
         "prefixe": "tinyclip"
+    },
+    {
+        "nom"    : "SigLIP",
+        "dossier": RESULTS_DIR / "siglip",
+        "prefixe": "siglip"
+    },
+    {
+        "nom"    : "EVA-CLIP",
+        "dossier": RESULTS_DIR / "evaclip",
+        "prefixe": "evaclip"
+    },
+    {
+        "nom"    : "OpenCLIP",
+        "dossier": RESULTS_DIR / "openclip",
+        "prefixe": "openclip"
+    },
+    {
+        "nom"    : "MetaCLIP",
+        "dossier": RESULTS_DIR / "metaclip",
+        "prefixe": "metaclip"
+    },
+    {
+        "nom"    : "DFN-CLIP",
+        "dossier": RESULTS_DIR / "dfnclip",
+        "prefixe": "dfnclip"
     }
 ]
 

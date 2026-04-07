@@ -32,20 +32,36 @@ GRAPHIQUES_DIR = RESULTS_DIR / "graphiques"
 FICHIERS_METRIQUES = [
     RESULTS_DIR / "mobileclip" / "mobileclip_s2_metrics.json",
     RESULTS_DIR / "clip"       / "clip_metrics.json",
-    RESULTS_DIR / "tinyclip"   / "tinyclip_metrics.json"
+    RESULTS_DIR / "tinyclip"   / "tinyclip_metrics.json",
+    RESULTS_DIR / "siglip"     / "siglip_metrics.json",
+    RESULTS_DIR / "evaclip"    / "evaclip_metrics.json",
+    RESULTS_DIR / "openclip"   / "openclip_metrics.json",
+    RESULTS_DIR / "metaclip"   / "metaclip_metrics.json",
+    RESULTS_DIR / "dfnclip"    / "dfnclip_metrics.json"
 ]
 
 FICHIERS_ACCURACY = [
     RESULTS_DIR / "mobileclip" / "zeroshot" / "accuracy.json",
     RESULTS_DIR / "clip"       / "zeroshot" / "accuracy.json",
-    RESULTS_DIR / "tinyclip"   / "zeroshot" / "accuracy.json"
+    RESULTS_DIR / "tinyclip"   / "zeroshot" / "accuracy.json",
+    RESULTS_DIR / "siglip"     / "zeroshot" / "accuracy.json",
+    RESULTS_DIR / "evaclip"    / "zeroshot" / "accuracy.json",
+    RESULTS_DIR / "openclip"   / "zeroshot" / "accuracy.json",
+    RESULTS_DIR / "metaclip"   / "zeroshot" / "accuracy.json",
+    RESULTS_DIR / "dfnclip"    / "zeroshot" / "accuracy.json"
 ]
 
 # Couleurs et nombre de paramètres de chaque modèle
+# Les paramètres indiqués correspondent aux encodeurs image+texte combinés
 INFOS_MODELES = {
     "MobileCLIP-S2" : {"couleur": "#E07B39", "params_M": 35,  "label_court": "MobileCLIP-S2"},
     "CLIP ViT-B/32" : {"couleur": "#4A6FD4", "params_M": 151, "label_court": "CLIP B/32"},
     "TinyCLIP"      : {"couleur": "#C45BAA", "params_M": 39,  "label_court": "TinyCLIP-39M"},
+    "SigLIP"        : {"couleur": "#3DAA6E", "params_M": 86,  "label_court": "SigLIP-B/16"},
+    "EVA-CLIP"      : {"couleur": "#D4A017", "params_M": 149, "label_court": "EVA-CLIP B/16"},
+    "OpenCLIP"      : {"couleur": "#7B68EE", "params_M": 151, "label_court": "OpenCLIP B/32"},
+    "MetaCLIP"      : {"couleur": "#E05C5C", "params_M": 151, "label_court": "MetaCLIP B/32"},
+    "DFN-CLIP"      : {"couleur": "#2ABBE8", "params_M": 149, "label_court": "DFN-CLIP B/16"},
 }
 
 
