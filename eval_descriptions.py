@@ -88,95 +88,95 @@ DESCRIPTIONS_SINGLE = {
 # couvrir la diversité visuelle des frames du dataset
 DESCRIPTIONS_MULTI = {
     "Fighting": [
-        "a person fighting",
-        "people punching and kicking each other",
-        "a violent fight between people in a surveillance video",
-        "two people hitting each other",
-        "a physical altercation caught on camera"
+        "a person fighting", 
+        "two or more people engaging in a mutual physical fight",
+        "opponents punching and kicking each other simultaneously",
+        "a brawl where multiple parties are actively hitting one another",
+        "a reciprocal physical altercation between individuals"
     ],
     "Robbery": [
         "a robbery",
-        "someone robbing a person at gunpoint or by force",
-        "a thief stealing from someone aggressively",
-        "a mugging caught on surveillance camera",
-        "someone threatening a person to steal their belongings"
+        "someone robbing a person by using immediate force or a weapon",
+        "a victim being threatened with a weapon to hand over valuables",
+        "an aggressive mugging where a person is held up",
+        "stealing from a person through direct confrontation and intimidation"
     ],
     "Accident": [
         "a car accident",
-        "a vehicle collision",
-        "cars crashing into each other",
-        "a traffic accident with damaged vehicles",
-        "an accident caught on surveillance camera"
+        "a vehicle collision involving cars, trucks or motorcycles",
+        "cars crashing into stationary objects or other vehicles",
+        "a sudden traffic collision on a street or highway",
+        "impact between motor vehicles resulting in damage"
     ],
     "Vandalism": [
         "vandalism",
-        "someone destroying public property",
-        "a person spray painting graffiti",
-        "someone breaking windows or damaging property",
-        "vandalism caught on surveillance camera"
+        "someone intentionally destroying or defacing public property",
+        "a person spray painting graffiti on a wall or building",
+        "breaking windows, mirrors or damaging structures",
+        "deliberate destruction of property caught on camera"
     ],
     "Arrest": [
-        "a person being arrested by police",
-        "police officers arresting someone",
-        "law enforcement detaining a suspect",
-        "a person being handcuffed by police",
-        "police making an arrest"
+        "a person being arrested",
+        "police officers in uniform apprehending a suspect",
+        "law enforcement officers placing handcuffs on an individual",
+        "a suspect being detained and led away by police",
+        "official police intervention to take a person into custody"
     ],
     "Burglary": [
         "a burglary",
-        "someone breaking into a building",
-        "a person entering a building illegally",
-        "a burglar breaking and entering",
-        "someone sneaking into a building to steal"
+        "someone breaking into a closed building or house to steal",
+        "a person forcing entry through a door or window of a property",
+        "illegal entry into a home or business, usually while unoccupied",
+        "a burglar sneaking into a private premises to commit theft"
     ],
     "Shooting": [
-        "a person shooting a gun",
-        "gunfire in a surveillance video",
-        "someone firing a weapon",
-        "a shooting incident caught on camera",
-        "a person with a firearm shooting at someone"
+        "a person shooting",
+        "someone discharging a firearm or handgun",
+        "a person aiming and firing a gun at a target",
+        "active gunfire and muzzle flashes from a weapon",
+        "an individual using a firearm in a violent incident"
     ],
     "Abuse": [
-        "a person being abused",
-        "someone hitting a vulnerable person",
-        "physical abuse caught on camera",
-        "a person violently attacking another person",
-        "abuse of a child or elderly person on camera"
+        "an abuse",
+        "a person physically mistreating a child, elderly, or defenseless person",
+        "someone inflicting repetitive harm on a vulnerable individual",
+        "physical violence against a victim who is not fighting back",
+        "domestic or interpersonal violence caught on camera"
     ],
     "Arson": [
-        "arson, someone setting fire to a building",
-        "a person starting a fire intentionally",
-        "fire and smoke from an intentional fire",
-        "someone burning a car or building",
-        "arson caught on surveillance camera"
+        "an arson",
+        "a person intentionally starting a fire with fuel or a lighter",
+        "someone deliberately setting fire to a building or vehicle",
+        "the act of lighting a structure on fire to cause destruction",
+        "intentional ignition of a fire caught on surveillance"
     ],
     "Assault": [
         "an assault",
-        "someone violently attacking a person",
-        "a person being beaten up",
-        "a violent attack on a person caught on camera",
-        "someone assaulting another person"
+        "one person suddenly attacking or beating a victim",
+        "a violent physical attack where the victim is being overpowered",
+        "an aggressor punching or hitting a person who is retreating",
+        "a person being physically assaulted by an attacker"
     ],
     "RoadAccidents": [
         "a road accident",
-        "a car crash on the road",
-        "vehicles colliding at an intersection",
-        "a traffic accident with pedestrians",
-        "a road accident caught on a traffic camera"
+        "a car crash occurring in the middle of a road or intersection",
+        "vehicles colliding during traffic flow",
+        "a traffic mishap involving moving cars or pedestrians on a street",
+        "motor vehicle accident caught on a roadway camera"
     ],
     "Shoplifting": [
-        "shoplifting in a store",
-        "a person stealing merchandise from a shop",
-        "someone hiding items to steal from a store",
-        "shoplifting caught on store surveillance camera",
-        "a person leaving a store without paying"
+        "shoplifting",
+        "a customer stealing merchandise inside a retail store",
+        "someone concealing store items in their clothes or bag",
+        "taking products from shop shelves without paying at the counter",
+        "theft committed during business hours inside a commercial shop"
     ],
     "Stealing": [
         "a person stealing",
-        "someone taking objects that do not belong to them",
-        "theft caught on surveillance camera",
-        "a person picking up and stealing an object",
-        "someone stealing from a car or public place"
+        "someone taking an unattended object that does not belong to them",
+        "theft of a bag, bicycle, or item from a public space",
+        "a person picking up and walking away with someone else's property",
+        "non-violent theft of belongings in an open environment"
     ]
 }
 
