@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 FRAMES_DIR  = Path("frames")
-OUTPUT_DIR  = Path("results/sigclip")
+OUTPUT_DIR  = Path("results/siglip")
 
 # Variante SigLIP — on peut aussi utiliser "google/siglip-large-patch16-384"
 MODEL_NAME  = "google/siglip-base-patch16-224"
@@ -66,8 +66,8 @@ class FrameDataset(Dataset):
 
 
 def save_checkpoint(output_dir, all_embeddings, all_metadata, errors, nb_frames_processed):
-    checkpoint_path = output_dir / 'sigclip_checkpoint.npz'
-    tmp_path        = output_dir / 'sigclip_checkpoint_tmp.npz'
+    checkpoint_path = output_dir / 'siglip_checkpoint.npz'
+    tmp_path        = output_dir / 'siglip_checkpoint_tmp.npz'
 
     emb_matrix = np.concatenate(all_embeddings, axis=0) if all_embeddings else np.empty((0, 768), dtype=np.float32)
 
@@ -77,7 +77,7 @@ def save_checkpoint(output_dir, all_embeddings, all_metadata, errors, nb_frames_
         nb_frames_processed=np.array(nb_frames_processed),
         errors=np.array(errors)
     )
-    meta_tmp = output_dir / 'sigclip_checkpoint_meta.csv'
+    meta_tmp = output_dir / 'siglip_checkpoint_meta.csv'
     pd.DataFrame(all_metadata).to_csv(meta_tmp, index=True)
 
     tmp_path.replace(checkpoint_path)
@@ -85,8 +85,8 @@ def save_checkpoint(output_dir, all_embeddings, all_metadata, errors, nb_frames_
 
 
 def load_checkpoint(output_dir):
-    checkpoint_path = output_dir / 'sigclip_checkpoint.npz'
-    meta_path       = output_dir / 'sigclip_checkpoint_meta.csv'
+    checkpoint_path = output_dir / 'siglip_checkpoint.npz'
+    meta_path       = output_dir / 'siglip_checkpoint_meta.csv'
 
     if not checkpoint_path.exists() or not meta_path.exists():
         return None
@@ -108,7 +108,7 @@ def load_checkpoint(output_dir):
 
 
 def cleanup_checkpoint(output_dir):
-    for name in ['sigclip_checkpoint.npz', 'sigclip_checkpoint_meta.csv', 'sigclip_checkpoint_tmp.npz']:
+    for name in ['siglip_checkpoint.npz', 'siglip_checkpoint_meta.csv', 'siglip_checkpoint_tmp.npz']:
         p = output_dir / name
         if p.exists():
             p.unlink()
@@ -245,11 +245,11 @@ def encode_frames(frames_dir, output_dir, model_name, batch_size):
 def _save_final_results(output_dir, embeddings_matrix, all_metadata, errors,
                         encoding_time, nb_encoded, model_name, batch_size, device):
 
-    embeddings_path = output_dir / 'sigclip_embeddings.npy'
+    embeddings_path = output_dir / 'siglip_embeddings.npy'
     np.save(embeddings_path, embeddings_matrix)
     logger.info(f"Embeddings sauvegardés dans {embeddings_path}, shape : {embeddings_matrix.shape}")
 
-    metadata_path = output_dir / 'sigclip_metadata.csv'
+    metadata_path = output_dir / 'siglip_metadata.csv'
     pd.DataFrame(all_metadata).to_csv(metadata_path, index=True)
     logger.info(f"Métadonnées sauvegardées dans {metadata_path}")
 
@@ -265,7 +265,7 @@ def _save_final_results(output_dir, embeddings_matrix, all_metadata, errors,
         'device'            : device
     }
 
-    metrics_path = output_dir / 'sigclip_metrics.json'
+    metrics_path = output_dir / 'siglip_metrics.json'
     with open(metrics_path, 'w') as f:
         json.dump(metrics, f, indent=2)
     logger.info(f"Métriques sauvegardées dans {metrics_path}")
