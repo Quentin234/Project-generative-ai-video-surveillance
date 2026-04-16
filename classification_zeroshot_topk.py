@@ -83,7 +83,7 @@ RESULTS_DIR = Path("results")
 EVAL_DIR    = RESULTS_DIR / "evaluations" / "topk"
 
 CLASSES_DATASET = [
-    "Fighting", "Robbery", "Accident", "Vandalism", "Arrest",
+    "Fighting", "Robbery", "Vandalism", "Arrest",
     "Burglary", "Shooting", "Abuse", "Arson", "Assault",
     "RoadAccidents", "Shoplifting", "Stealing", "Explosion"
 ]
@@ -103,13 +103,6 @@ DESCRIPTIONS_MULTI = {
         "a victim being threatened with a weapon to hand over valuables",
         "an aggressive mugging where a person is held up",
         "stealing from a person through direct confrontation and intimidation"
-    ],
-    "Accident": [
-        "a car accident",
-        "a vehicle collision involving cars, trucks or motorcycles",
-        "cars crashing into stationary objects or other vehicles",
-        "a sudden traffic collision on a street or highway",
-        "impact between motor vehicles resulting in damage"
     ],
     "Vandalism": [
         "vandalism",
@@ -192,6 +185,18 @@ DESCRIPTIONS_MULTI = {
 
 MODELES = [
     {
+        "nom"    : "SigLIP",
+        "dossier": RESULTS_DIR / "siglip",
+        "prefixe": "siglip",
+        "type"   : "siglip"
+    },
+    {
+        "nom"    : "TinyCLIP",
+        "dossier": RESULTS_DIR / "tinyclip",
+        "prefixe": "tinyclip",
+        "type"   : "tinyclip"
+    },
+    {
         "nom"    : "MobileCLIP-S2",
         "dossier": RESULTS_DIR / "mobileclip",
         "prefixe": "mobileclip_s2",
@@ -202,12 +207,6 @@ MODELES = [
         "dossier": RESULTS_DIR / "clip",
         "prefixe": "clip",
         "type"   : "clip"
-    },
-    {
-        "nom"    : "SigLIP",
-        "dossier": RESULTS_DIR / "siglip",
-        "prefixe": "siglip",
-        "type"   : "siglip"
     },
     {
         "nom"             : "EVA-CLIP",
@@ -307,7 +306,7 @@ def encoder_textes_siglip(textes, device):
     inputs     = processor(text=textes, return_tensors="pt", padding="max_length",
                            max_length=64, truncation=True).to(device)
     with torch.no_grad():
-        emb = model.get_text_features(**inputs)
+        emb = model.get_text_features(**inputs).pooler_output
         emb = emb / emb.norm(dim=-1, keepdim=True)
     return emb.cpu().float().numpy()
 

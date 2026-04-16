@@ -112,7 +112,7 @@ MODELES_DISPO = {
 
 # 13 classes avec leurs 5 descriptions (prompt ensembling, méthode desc_4_mean_embed)
 CLASSES_DATASET = [
-    "Fighting", "Robbery", "Accident", "Vandalism", "Arrest",
+    "Fighting", "Robbery", "Explosion", "Vandalism", "Arrest",
     "Burglary", "Shooting", "Abuse", "Arson", "Assault",
     "RoadAccidents", "Shoplifting", "Stealing"
 ]
@@ -132,12 +132,12 @@ DESCRIPTIONS_MULTI = {
         "an aggressive mugging where a person is held up",
         "stealing from a person through direct confrontation and intimidation"
     ],
-    "Accident": [
-        "a car accident",
-        "a vehicle collision involving cars, trucks or motorcycles",
-        "cars crashing into stationary objects or other vehicles",
-        "a sudden traffic collision on a street or highway",
-        "impact between motor vehicles resulting in damage"
+    "Explosion": [
+        "an explosion",
+        "a sudden violent burst of fire and smoke from a device or building",
+        "a large blast with flames and debris flying outward",
+        "an explosive detonation causing destruction and shockwave",
+        "a bomb or gas explosion caught on surveillance camera"
     ],
     "Vandalism": [
         "vandalism",
@@ -966,6 +966,20 @@ def construire_interface():
                 choices=CLASSES_DATASET,
                 value=CLASSES_DATASET,
                 label="Classes à afficher sur le graphique"
+            )
+            with gr.Row():
+                t4_btn_tout     = gr.Button("✅ Tout sélectionner",   size="sm")
+                t4_btn_aucun    = gr.Button("☐ Tout désélectionner", size="sm")
+
+            t4_btn_tout.click(
+                fn=lambda: CLASSES_DATASET,
+                inputs=[],
+                outputs=[t4_classes]
+            )
+            t4_btn_aucun.click(
+                fn=lambda: [],
+                inputs=[],
+                outputs=[t4_classes]
             )
 
             t4_btn      = gr.Button("Tracer le graphique", variant="primary")
