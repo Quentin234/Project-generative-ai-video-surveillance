@@ -194,7 +194,7 @@ def encoder_labels_siglip(labels, device):
                        max_length=64, truncation=True).to(device)
 
     with torch.no_grad():
-        text_embeddings = model.get_text_features(**inputs)
+        text_embeddings = model.get_text_features(**inputs).pooler_output
         text_embeddings = text_embeddings / text_embeddings.norm(dim=-1, keepdim=True)
 
     return text_embeddings.cpu().float().numpy()

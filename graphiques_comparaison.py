@@ -1,295 +1,87 @@
-"""
-Ce script génère les graphiques de comparaison entre les trois modèles
-
-On génère deux graphiques :
-    comparaison_vitesse_accuracy.png    vitesse vs accuracy zero-shot
-    comparaison_vitesse_encodage.png    vitesse vs frames encodées par seconde
-
-Les fichiers sont sauvegardés dans results/graphiques/.
-
-"""
-
 import json
-import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.patheffects as pe
 from pathlib import Path
 import logging
 
-# Affiche des logs pour suivre l'avancement du script et détecter d'éventuels problèmes
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%H:%M:%S"
-)
+logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
-
-RESULTS_DIR    = Path("results")
+RESULTS_DIR = Path("results")
 GRAPHIQUES_DIR = RESULTS_DIR / "graphiques"
 
-# Chemins vers les fichiers produits par les scripts précédents
-FICHIERS_METRIQUES = [
-    RESULTS_DIR / "mobileclip" / "mobileclip_s2_metrics.json",
-    RESULTS_DIR / "clip"       / "clip_metrics.json",
-    RESULTS_DIR / "tinyclip"   / "tinyclip_metrics.json",
-    RESULTS_DIR / "siglip"     / "siglip_metrics.json",
-    RESULTS_DIR / "evaclip"    / "evaclip_metrics.json",
-    RESULTS_DIR / "openclip"   / "openclip_metrics.json",
-    RESULTS_DIR / "metaclip"   / "metaclip_metrics.json",
-    RESULTS_DIR / "dfnclip"    / "dfnclip_metrics.json"
-]
+MODELS = ["mobileclip", "clip", "tinyclip", "siglip", "evaclip", "openclip", "metaclip", "dfnclip"]
+FICHIERS_METRIQUES = [RESULTS_DIR / m / f"{m}_metrics.json" for m in MODELS]
+FICHIERS_ACCURACY = [RESULTS_DIR / m / "zeroshot" / "accuracy.json" for m in MODELS]
 
-FICHIERS_ACCURACY = [
-    RESULTS_DIR / "mobileclip" / "zeroshot" / "accuracy.json",
-    RESULTS_DIR / "clip"       / "zeroshot" / "accuracy.json",
-    RESULTS_DIR / "tinyclip"   / "zeroshot" / "accuracy.json",
-    RESULTS_DIR / "siglip"     / "zeroshot" / "accuracy.json",
-    RESULTS_DIR / "evaclip"    / "zeroshot" / "accuracy.json",
-    RESULTS_DIR / "openclip"   / "zeroshot" / "accuracy.json",
-    RESULTS_DIR / "metaclip"   / "zeroshot" / "accuracy.json",
-    RESULTS_DIR / "dfnclip"    / "zeroshot" / "accuracy.json"
-]
-
-# Couleurs et nombre de paramètres de chaque modèle
-# Les paramètres indiqués correspondent aux encodeurs image+texte combinés
+# Utilisation des paramètres de l'ENCODEUR IMAGE uniquement
 INFOS_MODELES = {
-    "MobileCLIP-S2" : {"couleur": "#E07B39", "params_M": 35,  "label_court": "MobileCLIP-S2"},
-    "CLIP ViT-B/32" : {"couleur": "#4A6FD4", "params_M": 151, "label_court": "CLIP B/32"},
-    "TinyCLIP"      : {"couleur": "#C45BAA", "params_M": 39,  "label_court": "TinyCLIP-39M"},
-    "SigLIP"        : {"couleur": "#3DAA6E", "params_M": 86,  "label_court": "SigLIP-B/16"},
-    "EVA-CLIP"      : {"couleur": "#D4A017", "params_M": 149, "label_court": "EVA-CLIP B/16"},
-    "OpenCLIP"      : {"couleur": "#7B68EE", "params_M": 151, "label_court": "OpenCLIP B/32"},
-    "MetaCLIP"      : {"couleur": "#E05C5C", "params_M": 151, "label_court": "MetaCLIP B/32"},
-    "DFN-CLIP"      : {"couleur": "#2ABBE8", "params_M": 149, "label_court": "DFN-CLIP B/16"},
+    "mobileclip": {"couleur": "#E07B39", "label": "MobileCLIP", "params": 26},
+    "tinyclip":   {"couleur": "#C45BAA", "label": "TinyCLIP",   "params": 39},
+    "metaclip":   {"couleur": "#E05C5C", "label": "MetaCLIP",   "params": 88},
+    "siglip":     {"couleur": "#3DAA6E", "label": "SigLIP",     "params": 86},
+    "eva":        {"couleur": "#D4A017", "label": "EVA-CLIP",   "params": 86},
+    "dfn":        {"couleur": "#2ABBE8", "label": "DFN-CLIP",   "params": 86},
+    "laion2b":    {"couleur": "#7B68EE", "label": "OpenCLIP",   "params": 88},
+    "clip":       {"couleur": "#4A6FD4", "label": "CLIP B/32",  "params": 88},
 }
 
-
-TAILLE_BASE = 400
-
 def charger_json(chemin):
-    p = Path(chemin)
-    if not p.exists():
-        logger.warning(f"Fichier introuvable : {chemin}")
-        return None
-    with open(p) as f:
-        return json.load(f)
+    if not chemin.exists(): return None
+    with open(chemin) as f: return json.load(f)
 
-# Calcule la taille d'un point en fonction du nombre de paramètres du modèle.
-def calculer_taille_point(params_M, max_params):
-    return TAILLE_BASE * (params_M / max_params) ** 0.6
-
-# Applique un style soigné au graphique pour le rendre plus lisible et esthétique
-def style(ax, titre, xlabel, ylabel):
-    ax.set_title(titre, fontsize=13, fontweight="bold", pad=15)
-    ax.set_xlabel(xlabel, fontsize=11)
-    ax.set_ylabel(ylabel, fontsize=11)
-    ax.grid(True, linestyle="--", alpha=0.4, color="gray", linewidth=0.7)
+def style_graph(ax, titre, xlabel, ylabel):
+    ax.set_title(titre, fontsize=12, fontweight="bold", pad=15)
+    ax.set_xlabel(xlabel, fontsize=10)
+    ax.set_ylabel(ylabel, fontsize=10)
+    ax.grid(True, linestyle="--", alpha=0.3)
     ax.set_facecolor("#F8F9FA")
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
-    ax.spines["left"].set_color("#CCCCCC")
-    ax.spines["bottom"].set_color("#CCCCCC")
-    ax.tick_params(colors="#555555", labelsize=9)
+    for s in ["top", "right"]: ax.spines[s].set_visible(False)
 
-# Ajoute une légende qui explique la taille des points en haut du graphique
-def ajouter_legende_taille(ax, infos_modeles, max_params):
-    legendes = []
-    for nom, infos in infos_modeles.items():
-        taille = calculer_taille_point(infos["params_M"], max_params)
-        point  = ax.scatter(
-            [], [],
-            s=taille,
-            color=infos["couleur"],
-            alpha=0.85,
-            edgecolors="white",
-            linewidths=1.5,
-            label=f"{infos['label_court']} ({infos['params_M']}M params)"
-        )
-        legendes.append(point)
-
-    ax.legend(
-        handles=legendes,
-        loc="lower right",
-        fontsize=8.5,
-        framealpha=0.9,
-        edgecolor="#DDDDDD",
-        fancybox=True
-    )
-
-# Graphique principal : vitesse d'encodage (axe X) vs accuracy zero-shot (axe Y).
-def graphique_vitesse_accuracy():
+def generer_graphiques():
     donnees = []
-
-    for f_metriques, f_accuracy in zip(FICHIERS_METRIQUES, FICHIERS_ACCURACY):
-        m = charger_json(f_metriques)
-        a = charger_json(f_accuracy)
-        if m is None or a is None:
-            continue
-
-        nom = m["model"]
-        infos = None
-        for cle, val in INFOS_MODELES.items():
-            if cle in nom or nom in cle:
-                infos = val
-                break
-        if infos is None:
-            infos = {"couleur": "#999999", "params_M": 50, "label_court": nom}
+    for folder, f_met, f_acc in zip(MODELS, FICHIERS_METRIQUES, FICHIERS_ACCURACY):
+        m, a = charger_json(f_met), charger_json(f_acc)
+        if not m or not a: continue
+        
+        nom_brut = m["model"].lower()
+        conf = next((v for k, v in INFOS_MODELES.items() if k in nom_brut), None)
+        if not conf or (conf['label'] == "CLIP B/32" and folder != "clip"):
+            conf = INFOS_MODELES.get(folder)
 
         donnees.append({
-            "nom"      : nom,
-            "vitesse"  : m["frames_per_second"],
-            "accuracy" : a["accuracy_pourcent"],
-            "infos"    : infos
+            "vitesse": m["frames_per_second"],
+            "accuracy": a["accuracy_pourcent"],
+            "params": conf["params"],
+            "couleur": conf["couleur"],
+            "label": conf["label"]
         })
 
-    if not donnees:
-        logger.warning("Pas de données suffisantes pour générer le graphique vitesse vs accuracy")
-        return
-
-    max_params = max(d["infos"]["params_M"] for d in donnees)
-
-    fig, ax = plt.subplots(figsize=(9, 6.5))
-    style(
-        ax,
-        titre  = "Vitesse d'encodage vs Accuracy zero-shot — UCF-Crime",
-        xlabel = "Vitesse d'encodage (frames / seconde)",
-        ylabel = "Accuracy zero-shot (%)"
-    )
-
-    # On trie par vitesse pour relier les points avec une ligne dans l'ordre croissant
-    donnees_tries = sorted(donnees, key=lambda d: d["vitesse"])
-
-    xs = [d["vitesse"]  for d in donnees_tries]
-    ys = [d["accuracy"] for d in donnees_tries]
-
-    ax.plot(xs, ys, color="#AAAAAA", linewidth=1.2, zorder=1, linestyle="-", alpha=0.6)
-
-    # On dessine chaque point individuellement pour avoir des couleurs différentes
+    # --- Graph 1 : Vitesse vs Accuracy ---
+    fig1, ax1 = plt.subplots(figsize=(9, 6))
+    style_graph(ax1, "Vitesse d'encodage vs Accuracy (Zero-shot)", "Frames / seconde", "Accuracy (%)")
+    d_v = sorted(donnees, key=lambda x: x["vitesse"])
+    ax1.plot([x["vitesse"] for x in d_v], [x["accuracy"] for x in d_v], color="#CCC", zorder=1)
     for d in donnees:
-        taille = calculer_taille_point(d["infos"]["params_M"], max_params)
-        ax.scatter(
-            d["vitesse"], d["accuracy"],
-            s=taille,
-            color=d["infos"]["couleur"],
-            alpha=0.88,
-            edgecolors="white",
-            linewidths=1.8,
-            zorder=3
-        )
+        ax1.scatter(d["vitesse"], d["accuracy"], s=250, color=d["couleur"], edgecolors="white", zorder=3, label=d["label"])
+    ax1.legend(loc='lower center', bbox_to_anchor=(0.5, -0.25), ncol=4, fontsize=8)
+    plt.savefig(GRAPHIQUES_DIR / "comparaison_vitesse_accuracy.png", dpi=150, bbox_inches="tight")
 
-        # On place le label légèrement décalé pour qu'il ne chevauche pas le point
-        offset_x = d["vitesse"] * 0.02
-        offset_y = 0.4
-        ax.annotate(
-            d["infos"]["label_court"],
-            (d["vitesse"], d["accuracy"]),
-            xytext=(d["vitesse"] + offset_x, d["accuracy"] + offset_y),
-            fontsize=9,
-            color=d["infos"]["couleur"],
-            fontweight="bold",
-            path_effects=[pe.withStroke(linewidth=2, foreground="white")]
-        )
-
-    ajouter_legende_taille(ax, INFOS_MODELES, max_params)
-
-    plt.tight_layout()
-    chemin = GRAPHIQUES_DIR / "comparaison_vitesse_accuracy.png"
-    plt.savefig(chemin, dpi=150, bbox_inches="tight")
-    plt.close()
-    logger.info(f"Graphique sauvegardé dans {chemin}")
-
-
-# Graphique secondaire : nombre de paramètres (axe X) vs accuracy (axe Y).
-def graphique_params_accuracy():
-    donnees = []
-
-    for f_metriques, f_accuracy in zip(FICHIERS_METRIQUES, FICHIERS_ACCURACY):
-        m = charger_json(f_metriques)
-        a = charger_json(f_accuracy)
-        if m is None or a is None:
-            continue
-
-        nom   = m["model"]
-        infos = None
-        for cle, val in INFOS_MODELES.items():
-            if cle in nom or nom in cle:
-                infos = val
-                break
-        if infos is None:
-            infos = {"couleur": "#999999", "params_M": 50, "label_court": nom}
-
-        donnees.append({
-            "nom"      : nom,
-            "params"   : infos["params_M"],
-            "accuracy" : a["accuracy_pourcent"],
-            "vitesse"  : m["frames_per_second"],
-            "infos"    : infos
-        })
-
-    if not donnees:
-        logger.warning("Pas de données suffisantes pour le graphique params vs accuracy")
-        return
-
-    max_vitesse = max(d["vitesse"] for d in donnees)
-
-    fig, ax = plt.subplots(figsize=(9, 6.5))
-    style(
-        ax,
-        titre  = "Taille du modèle vs Accuracy zero-shot — UCF-Crime",
-        xlabel = "Nombre de paramètres (millions)",
-        ylabel = "Accuracy zero-shot (%)"
-    )
-
-    donnees_tries = sorted(donnees, key=lambda d: d["params"])
-    xs = [d["params"]   for d in donnees_tries]
-    ys = [d["accuracy"] for d in donnees_tries]
-    ax.plot(xs, ys, color="#AAAAAA", linewidth=1.2, zorder=1, linestyle="-", alpha=0.6)
-
+    # --- Graph 2 : Paramètres Image vs Accuracy ---
+    fig2, ax2 = plt.subplots(figsize=(9, 6))
+    style_graph(ax2, "Taille Image Encoder vs Accuracy (Zero-shot)", "Paramètres Image (Millions)", "Accuracy (%)")
+    d_p = sorted(donnees, key=lambda x: x["params"])
+    ax2.plot([x["params"] for x in d_p], [x["accuracy"] for x in d_p], color="#CCC", zorder=1)
+    
+    max_v = max(x["vitesse"] for x in donnees)
     for d in donnees:
-        # La taille du point représente la vitesse d'encodage
-        taille = TAILLE_BASE * (d["vitesse"] / max_vitesse) ** 0.6
-        ax.scatter(
-            d["params"], d["accuracy"],
-            s=taille,
-            color=d["infos"]["couleur"],
-            alpha=0.88,
-            edgecolors="white",
-            linewidths=1.8,
-            zorder=3
-        )
-        ax.annotate(
-            d["infos"]["label_court"],
-            (d["params"], d["accuracy"]),
-            xytext=(d["params"] + max(xs) * 0.015, d["accuracy"] + 0.4),
-            fontsize=9,
-            color=d["infos"]["couleur"],
-            fontweight="bold",
-            path_effects=[pe.withStroke(linewidth=2, foreground="white")]
-        )
-
-    ax.text(
-        0.02, 0.02,
-        "Taille des points proportionnelle à la vitesse d'encodage",
-        transform=ax.transAxes,
-        fontsize=7.5,
-        color="#999999",
-        style="italic"
-    )
-
-    plt.tight_layout()
-    chemin = GRAPHIQUES_DIR / "comparaison_params_accuracy.png"
-    plt.savefig(chemin, dpi=150, bbox_inches="tight")
-    plt.close()
-    logger.info(f"Graphique sauvegardé dans {chemin}")
-
+        # La taille du point montre la vitesse relative
+        s_v = 50 + (d["vitesse"] / max_v) * 500
+        ax2.scatter(d["params"], d["accuracy"], s=s_v, color=d["couleur"], edgecolors="white", zorder=3, label=d["label"])
+    
+    ax2.legend(loc='lower center', bbox_to_anchor=(0.5, -0.25), ncol=4, fontsize=8)
+    plt.savefig(GRAPHIQUES_DIR / "comparaison_params_accuracy.png", dpi=150, bbox_inches="tight")
 
 if __name__ == "__main__":
     GRAPHIQUES_DIR.mkdir(parents=True, exist_ok=True)
-
-    logger.info("Génération des graphiques de comparaison...\n")
-
-    graphique_vitesse_accuracy()
-    graphique_params_accuracy()
-
-    logger.info(f"\nGraphiques disponibles dans {GRAPHIQUES_DIR}")
+    generer_graphiques()
+    print("Graphiques mis à jour avec les paramètres de l'encodeur image uniquement.")

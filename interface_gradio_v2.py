@@ -1,7 +1,7 @@
 """
 interface_gradio_v2.py
 
-Interface Gradio en 4 onglets pour explorer le dataset UCF-Crime avec des modèles CLIP.
+Interface Gradio en 5 onglets pour explorer le dataset UCF-Crime avec des modèles CLIP.
 
 Tab 1 – Recherche par frames
     L'utilisateur saisit une requête texte, le système retourne les N frames
@@ -24,6 +24,13 @@ Tab 4 – Graphique de similarité d'une vidéo
     (prompt ensembling, méthode recommandée par le papier CLIP original).
     On trace les 13 courbes de similarité temporelle avec un marqueur de la
     vraie classe de la vidéo.
+
+Tab 5 – Carte t-SNE des vidéos
+    Pour chaque vidéo du dataset, on calcule l'embedding moyen de toutes ses frames
+    (1 vecteur par vidéo). On applique ensuite t-SNE pour projeter ces vecteurs en 2D.
+    La carte interactive Plotly affiche un point par vidéo, coloré par classe.
+    L'utilisateur peut filtrer les classes visibles et survoler un point pour voir
+    le nom de la vidéo.
 """
 
 import numpy as np
@@ -41,6 +48,8 @@ import logging
 import mobileclip
 import clip
 import open_clip
+import plotly.graph_objects as go
+from sklearn.manifold import TSNE
 from transformers import CLIPModel, CLIPProcessor, AutoModel, AutoProcessor
 from collections import defaultdict
 
@@ -227,6 +236,7 @@ _cache_encodeurs   = {}   # nom_modele -> tuple (type, model, extra, device)
 _cache_index       = {}   # nom_modele -> (faiss_index, metadata_df)
 _cache_embeddings  = {}   # nom_modele -> (embeddings np.array, metadata_df)
 _cache_class_embed = {}   # nom_modele -> matrice (13 x dim) des embeddings de classe
+_cache_tsne        = {}   # nom_modele -> DataFrame (x, y, classe, video) après t-SNE
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -784,6 +794,159 @@ def graphique_similarite_video(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# TAB 5 — CARTE t-SNE DES VIDÉOS
+# ─────────────────────────────────────────────────────────────────────────────
+
+def calculer_embeddings_videos(nom_modele: str) -> pd.DataFrame:
+    """
+    Pour chaque vidéo du dataset, calcule l'embedding moyen de toutes ses frames
+    (1 vecteur par vidéo, normalisé). Met le résultat en cache.
+    Retourne un DataFrame avec colonnes : video, classe, embedding (array).
+    """
+    if nom_modele in _cache_tsne:
+        return _cache_tsne[nom_modele]
+
+    logger.info(f"Calcul des embeddings moyens par vidéo pour {nom_modele}...")
+    embeddings, metadata = charger_embeddings_bruts(nom_modele)
+
+    lignes = []
+    groupes = metadata.groupby(["class", "video"])
+    for (classe, video), groupe in groupes:
+        idx     = groupe.index.tolist()
+        emb_moy = embeddings[idx].mean(axis=0)
+        norme   = np.linalg.norm(emb_moy)
+        if norme > 0:
+            emb_moy = emb_moy / norme
+        lignes.append({"classe": classe, "video": video, "embedding": emb_moy})
+
+    df = pd.DataFrame(lignes)
+    _cache_tsne[nom_modele] = df
+    logger.info(f"Embeddings moyens calculés : {len(df)} vidéos")
+    return df
+
+
+def carte_tsne(
+    nom_modele     : str,
+    classes_visibles: list,
+    perplexite     : int,
+    n_iter         : int
+):
+    """
+    Applique t-SNE sur les embeddings moyens par vidéo puis trace la carte
+    interactive Plotly (1 point = 1 vidéo, couleur = classe, hover = nom vidéo).
+
+    Paramètres t-SNE exposés à l'utilisateur :
+      - perplexite : contrôle l'équilibre local/global (recommandé : 5–50)
+      - n_iter     : nombre d'itérations d'optimisation (recommandé : 500–2000)
+    """
+    if not classes_visibles:
+        return None, "Sélectionnez au moins une classe à afficher."
+
+    try:
+        df_videos = calculer_embeddings_videos(nom_modele)
+
+        # Filtrage sur les classes sélectionnées
+        df_filtre = df_videos[df_videos["classe"].isin(classes_visibles)].copy()
+        if df_filtre.empty:
+            return None, "Aucune vidéo trouvée pour les classes sélectionnées."
+
+        # Matrice d'embeddings (N x dim)
+        X = np.stack(df_filtre["embedding"].values).astype(np.float32)
+
+        # t-SNE — perplexité doit être < nb de points
+        perp_effective = min(int(perplexite), len(df_filtre) - 1)
+        logger.info(
+            f"t-SNE sur {len(df_filtre)} vidéos "
+            f"(perplexité={perp_effective}, n_iter={n_iter})..."
+        )
+        tsne   = TSNE(
+            n_components=2,
+            perplexity=perp_effective,
+            max_iter=int(n_iter),
+            random_state=42,
+            init="pca",
+            learning_rate="auto"
+        )
+        coords = tsne.fit_transform(X)   # (N x 2)
+
+        df_filtre = df_filtre.copy()
+        df_filtre["x"] = coords[:, 0]
+        df_filtre["y"] = coords[:, 1]
+
+        # ── Construction de la figure Plotly ──────────────────────────────
+        fig = go.Figure()
+
+        for i, classe in enumerate(CLASSES_DATASET):
+            if classe not in classes_visibles:
+                continue
+            sous = df_filtre[df_filtre["classe"] == classe]
+            if sous.empty:
+                continue
+
+            couleur = COULEURS_CLASSES[CLASSES_DATASET.index(classe)]
+
+            fig.add_trace(go.Scatter(
+                x=sous["x"],
+                y=sous["y"],
+                mode="markers",
+                name=classe,
+                marker=dict(
+                    color=couleur,
+                    size=7,
+                    opacity=0.80,
+                    line=dict(width=0.5, color="white")
+                ),
+                # Texte affiché au survol
+                text=sous["video"],
+                customdata=sous["classe"],
+                hovertemplate=(
+                    "<b>%{text}</b><br>"
+                    "Classe : %{customdata}<br>"
+                    "x : %{x:.2f} | y : %{y:.2f}"
+                    "<extra></extra>"
+                )
+            ))
+
+        fig.update_layout(
+            title=dict(
+                text=(
+                    f"Carte t-SNE des vidéos UCF-Crime — {nom_modele}<br>"
+                    f"<sup>{len(df_filtre)} vidéos · "
+                    f"perplexité={perp_effective} · {n_iter} itérations</sup>"
+                ),
+                font=dict(size=14)
+            ),
+            xaxis=dict(title="t-SNE dim 1", showgrid=True, gridcolor="#EEEEEE", zeroline=False),
+            yaxis=dict(title="t-SNE dim 2", showgrid=True, gridcolor="#EEEEEE", zeroline=False),
+            legend=dict(
+                title="Classe",
+                itemsizing="constant",
+                bgcolor="rgba(255,255,255,0.85)",
+                bordercolor="#DDDDDD",
+                borderwidth=1
+            ),
+            plot_bgcolor="#F8F9FA",
+            paper_bgcolor="white",
+            height=650,
+            margin=dict(l=40, r=40, t=80, b=40),
+            hoverlabel=dict(bgcolor="white", font_size=12)
+        )
+
+        resume = (
+            f"{len(df_filtre)} vidéos projetées | "
+            f"{len(classes_visibles)} classes affichées | "
+            f"Modèle : {nom_modele}"
+        )
+        return fig, resume
+
+    except FileNotFoundError as e:
+        return None, str(e)
+    except Exception as e:
+        logger.error(f"Erreur tab 5 : {e}")
+        return None, f"Erreur : {e}"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # CALLBACKS DE MISE À JOUR DES LISTES DÉROULANTES
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -999,6 +1162,61 @@ def construire_interface():
                 outputs=[t4_graphe, t4_resume]
             )
 
+        # ── TAB 5 : CARTE t-SNE ────────────────────────────────────────────
+        with gr.Tab("🗺️ Carte t-SNE"):
+            gr.Markdown(
+                "**Carte t-SNE des vidéos** — "
+            )
+
+            with gr.Row():
+                with gr.Column(scale=1):
+                    t5_modele   = gr.Dropdown(
+                        choices=noms_modeles, value="CLIP ViT-B/32", label="Modèle"
+                    )
+                with gr.Column(scale=1):
+                    t5_perp     = gr.Slider(
+                        5, 100, value=30, step=1,
+                        label="Perplexité t-SNE",
+                        info="Équilibre local/global. Recommandé : 20–50."
+                    )
+                with gr.Column(scale=1):
+                    t5_niter    = gr.Slider(
+                        250, 2000000, value=1000, step=250,
+                        label="Itérations t-SNE",
+                        info="Plus = meilleure convergence, plus lent."
+                    )
+
+            # Filtre sur les classes à afficher
+            t5_classes  = gr.CheckboxGroup(
+                choices=CLASSES_DATASET,
+                value=CLASSES_DATASET,
+                label="Classes à afficher sur la carte"
+            )
+            with gr.Row():
+                t5_btn_tout  = gr.Button("✅ Tout sélectionner",   size="sm")
+                t5_btn_aucun = gr.Button("☐ Tout désélectionner", size="sm")
+
+            t5_btn_tout.click(
+                fn=lambda: CLASSES_DATASET,
+                inputs=[],
+                outputs=[t5_classes]
+            )
+            t5_btn_aucun.click(
+                fn=lambda: [],
+                inputs=[],
+                outputs=[t5_classes]
+            )
+
+            t5_btn      = gr.Button("Générer la carte t-SNE", variant="primary")
+            t5_resume   = gr.Textbox(label="Résumé", lines=1, interactive=False)
+            t5_carte    = gr.Plot(label="Carte t-SNE")
+
+            t5_btn.click(
+                fn=carte_tsne,
+                inputs=[t5_modele, t5_classes, t5_perp, t5_niter],
+                outputs=[t5_carte, t5_resume]
+            )
+
     return interface
 
 
@@ -1007,6 +1225,6 @@ def construire_interface():
 # ─────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    logger.info("Démarrage de l'interface Gradio v2 (4 onglets)...")
+    logger.info("Démarrage de l'interface Gradio v2 (5 onglets)...")
     interface = construire_interface()
     interface.launch(share=False)
